@@ -33,10 +33,24 @@ toField x   = error $ "Unknown map element " ++ show x
 zeroArr :: [a] -> Array Int a
 zeroArr xs = listArray (0, length xs - 1) xs
 
+-- day3' :: GameMap -> Int
+-- day3' map = day3'' 0 0 where
+--   day3'' x y | x > xBound = 0
+--   day3'' x y              = fieldValue x y + day3'' (x+1) ((y + 3) `mod` (yBound + 1))
+--   xBound = snd $ bounds map
+--   yBound = snd $ bounds $ map ! 0
+--   fieldValue x y = case map ! x ! y of
+--     Empty -> 0
+--     Tree  -> 1
+type Slope = (Int,Int)
+
 day3' :: GameMap -> Int
-day3' map = day3'' 0 0 where
-  day3'' x y | x > xBound = 0
-  day3'' x y              = fieldValue x y + day3'' (x+1) ((y + 3) `mod` (yBound + 1))
+day3' gm = product $ map (slope gm) [(1,1),(1,3),(1,5),(1,7),(2,1)]
+
+slope :: GameMap -> Slope -> Int
+slope map (dx,dy) = slope' 0 0 where
+  slope' x y | x > xBound = 0
+  slope' x y              = fieldValue x y + slope' (x+dx) ((y + dy) `mod` (yBound + 1))
   xBound = snd $ bounds map
   yBound = snd $ bounds $ map ! 0
   fieldValue x y = case map ! x ! y of
