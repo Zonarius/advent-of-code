@@ -21,7 +21,7 @@ maintainer:         zonarius@live.at
 -- category:
 extra-source-files: CHANGELOG.md
 
-executable day7
+executable day7exe
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
@@ -33,7 +33,20 @@ executable day7
         base ^>=4.14.2.0,
         attoparsec,
         text,
-        containers
+        containers,
+        fgl,
+        day7
 
     hs-source-dirs:   app
     default-language: Haskell2010
+
+library
+    exposed-modules: IncMap
+    hs-source-dirs:   src
+    default-language: Haskell2010
+    build-depends:
+        base ^>=4.14.2.0,
+        attoparsec,
+        text,
+        containers,
+        fgl

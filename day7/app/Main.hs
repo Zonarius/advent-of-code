@@ -11,10 +11,20 @@ import Data.Maybe (isJust, fromJust)
 import Data.Functor
 import Data.Either
 import Debug.Trace
-import Data.Graph (graphFromEdges, transposeG, reachable)
+import Data.Graph.Inductive.PatriciaTree
+import Data.Graph.Inductive.Graph
+import Data.Graph.Inductive.Query.BFS
+import Data.Tuple (swap)
+import Data.Foldable (foldl')
+import qualified IncMap as IM
 
 main :: IO ()
 main = interact app
+
+main2 :: IO ()
+main2 = do
+  inp <- readFile "./testinput"
+  putStrLn $ app inp
 
 app :: String -> String
 app = show . app' . parseIt input
@@ -61,8 +71,22 @@ contains = (,) <$> decimal
 
 app' :: [Rule] -> Int
 app' rules = let nodeList = mRule <$> rules
-                 mRule (Rule from to) = (from, from, snd <$> to)
-                 (graph',nodeFromVertex,vertexFromKey) = graphFromEdges nodeList
-                 graph = transposeG graph'
+                 mRule (Rule from to) = (from, (), swap <$> to)
+                 (graph,nodeFromVertex,vertexFromKey) = graphFromEdges nodeList
                  myBag = BagType "shiny" "gold" in
-  length (reachable graph (fromJust $ vertexFromKey myBag)) - 1
+  countBags graph (vertexFromKey myBag) - 1 where
+    countBags gr n = 1 + foldl' (\sum (suc,times) -> sum + (times * countBags gr suc)) 0 (lsuc gr n)
+
+graphFromEdges :: (Ord node, Eq node) => [(node, nlab, [(node,elab)])] -> (Gr nlab elab, Node -> node, node -> Node)
+graphFromEdges inp = (graph,nodeFromVertex,vertexFromKey) where
+  (nodes, edges, map) = foldl' fld ([], [], IM.empty) inp
+  graph               = mkGraph nodes edges
+  nodeFromVertex i    = IM.getValue i map
+  vertexFromKey  x    = IM.getIndex x map
+  fld (nodes, edges, map) (node, nlab, newEdges) =
+    let map' = foldl' (flip IM.insert) map (node : (fst <$> newEdges))
+        nodes' = (IM.getIndex node map', nlab) : nodes
+        edges' = foldl' fld2 edges newEdges
+        fld2 edges (to, elab) = (IM.getIndex node map', IM.getIndex to map', elab) : edges
+        in
+      (nodes', edges', map')
