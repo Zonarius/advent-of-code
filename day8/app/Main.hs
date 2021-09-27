@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 module Main where
 
 import Data.Attoparsec.Text
@@ -17,15 +18,15 @@ import Data.IntSet as IS
 import Data.Array as A
 
 main :: IO ()
-main = interact app
+main = interact app'
 
 main2 :: IO ()
 main2 = do
   inp <- readFile "./testinput"
-  putStrLn $ app inp
+  putStrLn $ app' inp
 
-app :: String -> String
-app = show . app' . parseIt input
+app' :: String -> String
+app' = show . app . parseIt input
 
 parseIt :: Parser a -> String -> a
 parseIt p = justRight . parseOnly p . pack where
@@ -39,10 +40,10 @@ data Program = Program {
   _instructions    :: A.Array Int Instruction
 } deriving Show
 
-data Instruction = Nop
+data Instruction = Nop Int
                  | Acc Int
                  | Jmp Int
-                 deriving Show
+                 deriving (Show, Eq)
 
 input :: Parser Program
 input = Program mempty 0 0 . toArray <$> instruction `sepBy1` endOfLine <?> "input"
@@ -51,19 +52,32 @@ toArray :: [a] -> Array Int a
 toArray xs = listArray (0, length xs - 1) xs
 
 instruction :: Parser Instruction
-instruction = ((Nop <$  ("nop " *> signed decimal)) <?> "nop")
+instruction = ((Nop <$> ("nop " *> signed decimal)) <?> "nop")
           <|> ((Acc <$> ("acc " *> signed decimal)) <?> "acc")
           <|> ((Jmp <$> ("jmp " *> signed decimal)) <?> "jmp")
 
 
-app' :: Program -> Int
-app' = _acc . run where
-  run p@(Program vis i _ _) = if IS.member i vis
-  then p
-  else run (step p)
+app :: Program -> Int
+app p = fromJust $ snd <$> find fst (run <$> programs p)
+
+programs :: Program -> [Program]
+programs p = swapAt <$> zip [0..] (repeat p) where
+  swapAt (i, Program vis ip acc ins) =
+    Program vis ip acc (ins // [(i, swapI (ins ! i))])
+
+swapI :: Instruction -> Instruction
+swapI (Nop x) = Jmp x
+swapI (Jmp x) = Nop x
+swapI (Acc x) = Acc x
+
+run :: Program -> (Bool, Int)
+run p@(Program vis i _ ins)
+  | IS.member i vis      = (False, _acc p)
+  | i > snd (bounds ins) = (True, _acc p)
+  | otherwise            = run (step p)
 
 step :: Program -> Program
 step (Program vis i acc ins) = case ins ! i of
-  Nop   -> Program (IS.insert i vis) (i + 1) acc ins
+  Nop _ -> Program (IS.insert i vis) (i + 1) acc ins
   Acc x -> Program (IS.insert i vis) (i + 1) (acc + x) ins
   Jmp x -> Program (IS.insert i vis) (i + x) acc ins
