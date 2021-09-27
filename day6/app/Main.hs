@@ -37,7 +37,10 @@ answer :: Parser Answers
 answer = S.fromList . unpack <$> takeWhile1 (not . isEndOfLine)
 
 uniqueAnswers :: Group -> Int
-uniqueAnswers = length . S.unions
+uniqueAnswers = length . intersections
+
+intersections :: (Foldable f, Ord a) => f (S.Set a) -> S.Set a
+intersections = foldl1 S.intersection
 
 app' :: [Group] -> Int
 app' = sum . fmap uniqueAnswers
