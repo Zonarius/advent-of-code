@@ -16,6 +16,7 @@ import Data.Tuple (swap)
 import Data.Foldable (foldl', fold)
 import Data.List (inits)
 import qualified Data.Map as M
+import qualified Data.IntMap as IM
 import Data.Map ((!))
 
 main :: IO ()
@@ -38,11 +39,9 @@ input :: Parser [Int]
 input = decimal `sepBy` endOfLine
 
 app :: [Int] -> Int
-app xs = let sorted = sort $ 0 : (maximum xs + 3) : xs
-             diffs  = zipWith (-) (tail sorted) sorted
-             tly    = tally diffs
-             in tly ! 1 * tly ! 3
-
-tally :: (Ord a, Eq a) => [a] -> M.Map a Int
-tally = foldl' fld mempty where
-  fld set x = M.insert x (1 + fromMaybe 0 (M.lookup x set)) set
+app xs = let (x:xs') = sort (0:xs) in
+  app' xs' (IM.singleton x 1) where
+  app' [] _       = error "no bueno"
+  app' [x] set    = addUp x set
+  app' (x:xs) set = app' xs $ IM.insert x (addUp x set) set
+  addUp x set = sum (fmap (\i -> fromMaybe 0 $ IM.lookup (x-i) set) [1..3])
